@@ -155,6 +155,7 @@ int main(int argc, char **argv)
     free(ma->tsoil);
     free(ma->co2);
     free(ma->ndep);
+    free(ma->pdep);
     free(ma->wind);
     free(ma->press);
     free(ma->par);
@@ -238,7 +239,7 @@ void run_sim(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
     int    fire_found = FALSE;;
     int    num_disturbance_yrs = 0;
 
-    double fdecay, rdecay, current_limitation, nitfac, year;
+    double fdecay, rdecay, current_limitation, npitfac, year;
     int   *disturbance_yrs = NULL;
 
     if (c->deciduous_model) {
@@ -249,8 +250,8 @@ void run_sim(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
             float_eq(s->avg_alleaf, 0.0) &&
             float_eq(s->avg_alroot, 0.0) &&
             float_eq(s->avg_alcroot, 0.0)) {
-            nitfac = 0.0;
-            calc_carbon_allocation_fracs(c, f, p, s, nitfac);
+            npitfac = 0.0;
+            calc_carbon_allocation_fracs(c, f, p, s, npitfac);
         } else {
             f->alleaf = s->avg_alleaf;
             f->alstem = s->avg_alstem;
@@ -258,7 +259,7 @@ void run_sim(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
             f->alroot = s->avg_alroot;
             f->alcroot = s->avg_alcroot;
         }
-        allocate_stored_c_and_n(f, p, s);
+        allocate_stored_cnp(f, p, s);
     }
 
     /* Setup output file */
@@ -352,6 +353,7 @@ void run_sim(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
     } else {
         s->lai = MAX(0.01, (p->sla * M2_AS_HA / KG_AS_TONNES /
                             p->cfracts * s->shoot));
+
     }
 
     if (c->disturbance) {
@@ -451,6 +453,10 @@ void run_sim(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
             calculate_csoil_flows(c, f, p, s, m->tsoil, doy);
             calculate_nsoil_flows(c, f, p, s, doy);
 
+            if (c->pcycle == TRUE) {
+                calculate_psoil_flows(c, f, p, s, doy);
+            }
+
             /* update stress SMA */
             if (c->deciduous_model && s->leaf_out_days[doy] > 0.0) {
                  /*
@@ -460,11 +466,11 @@ void run_sim(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
                   * This also applies for deciduous grasses, need to do the
                   * growth stress calc for grasses here too.
                   */
-                current_limitation = calculate_growth_stress_limitation(p, s);
+                current_limitation = calculate_growth_stress_limitation(p, s, c);
                 sma(SMA_ADD, hw, current_limitation);
                 s->prev_sma = sma(SMA_MEAN, hw).sma;
             } else if (c->deciduous_model == FALSE) {
-                current_limitation = calculate_growth_stress_limitation(p, s);
+                current_limitation = calculate_growth_stress_limitation(p, s, c);
                 sma(SMA_ADD, hw, current_limitation);
                 s->prev_sma = sma(SMA_MEAN, hw).sma;
             }
@@ -481,6 +487,10 @@ void run_sim(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
             /* Turn off all N calculations */
             if (c->ncycle == FALSE)
                 reset_all_n_pools_and_fluxes(f, s);
+
+            /* Turn off all P calculations */
+            if (c->pcycle == FALSE)
+                reset_all_p_pools_and_fluxes(f, s);
 
             /* calculate C:N ratios and increment annual flux sum */
             day_end_calculations(c, p, s, c->num_days, FALSE);
@@ -515,12 +525,12 @@ void run_sim(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
             **   E N D   O F   D A Y   **
             ** ======================= */
         }
-        
 
-        /* Allocate stored C&N for the following year */
+
+        /* Allocate stored C,N and P for the following year */
         if (c->deciduous_model) {
             calculate_average_alloc_fractions(f, s, p->growing_seas_len);
-            allocate_stored_c_and_n(f, p, s);
+            allocate_stored_cnp(f, p, s);
         }
 
         // Adjust rooting distribution at the end of the year to account for
@@ -563,10 +573,19 @@ void spin_up_pools(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
     * Murty, D and McMurtrie, R. E. (2000) Ecological Modelling, 134,
       185-205, specifically page 196.
     */
-    double tol = 5E-03;
+    double tol_c = 5E-03;
+    double tol_n = 5E-04;
+    double tol_p = 5E-05;
     double prev_plantc = 99999.9;
     double prev_soilc = 99999.9;
+    double prev_plantn = 99999.9;
+    double prev_soiln = 99999.9;
+    double prev_plantp = 99999.9;
+    double prev_soilp = 99999.9;
     int i, cntrl_flag;
+    
+    /* check for convergences in units of kg/m2 */
+    double conv = TONNES_HA_2_KG_M2;
 
     /* Final state + param file */
     open_output_file(c, c->out_param_fname, &(c->ofp));
@@ -584,21 +603,37 @@ void spin_up_pools(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
 
     fprintf(stderr, "Spinning up the model...\n");
     while (TRUE) {
-        if (fabs(prev_plantc - s->plantc) < tol &&
-            fabs(prev_soilc - s->soilc) < tol) {
+        if (fabs((prev_plantc) - (s->plantc)) < tol_c &&
+            fabs((prev_soilc) - (s->soilc)) < tol_c &&
+            fabs((prev_plantn) - (s->plantn)) < tol_n &&
+            fabs((prev_soiln) - (s->soiln)) < tol_n &&
+            fabs((prev_plantp) - (s->plantp)) < tol_p &&
+            fabs((prev_soilp) - (s->inorgavlp)) < tol_p) {
             break;
         } else {
             prev_plantc = s->plantc;
             prev_soilc = s->soilc;
+            prev_plantn = s->plantn;
+            prev_soiln = s->soiln;
+            prev_plantp = s->plantp;
+            prev_soilp = s->inorgavlp;
 
             /* 1000 years (50 yrs x 20 cycles) */
             for (i = 0; i < 20; i++) {
                 run_sim(cw, c, f, ma, m, p, s, nr); /* run GDAY */
             }
-
-            /* Have we reached a steady state? */
-            fprintf(stderr,
-              "Spinup: Plant C - %f, Soil C - %f\n", s->plantc, s->soilc);
+            if (c->pcycle) {
+                /* Have we reached a steady state? */
+                fprintf(stderr,
+                        "Spinup: Plant C - %f, Soil C - %f, \
+                         Soil N - %f, Soil avl P - %f\n",
+                        s->plantc, s->soilc, s->soiln, s->inorgavlp);
+            } else {
+              /* Have we reached a steady state? */
+              fprintf(stderr,
+                      "Spinup: Plant C - %f, Soil C - %f\n",
+                      s->plantc, s->soilc);
+            }
         }
     }
     write_final_state(c, p, s);
@@ -659,7 +694,9 @@ void correct_rate_constants(params *p, int output) {
 
     if (output) {
         p->rateuptake *= NDAYS_IN_YR;
+        p->prateuptake *= NDAYS_IN_YR;
         p->rateloss *= NDAYS_IN_YR;
+        p->prateloss *= NDAYS_IN_YR;
         p->retransmob *= NDAYS_IN_YR;
         p->fdecay *= NDAYS_IN_YR;
         p->fdecaydry *= NDAYS_IN_YR;
@@ -677,10 +714,19 @@ void correct_rate_constants(params *p, int output) {
         p->kdec6 *= NDAYS_IN_YR;
         p->kdec7 *= NDAYS_IN_YR;
         p->nuptakez *= NDAYS_IN_YR;
+        p->puptakez *= NDAYS_IN_YR;
         p->nmax *= NDAYS_IN_YR;
+        p->pmax *= NDAYS_IN_YR;
+//        p->p_atm_deposition *= NDAYS_IN_YR;
+        p->p_rate_par_weather *= NDAYS_IN_YR;
+        p->max_p_biochemical *= NDAYS_IN_YR;
+        p->rate_sorb_ssorb *= NDAYS_IN_YR;
+        p->rate_ssorb_occ *= NDAYS_IN_YR;
     } else {
         p->rateuptake /= NDAYS_IN_YR;
+        p->prateuptake /= NDAYS_IN_YR;
         p->rateloss /= NDAYS_IN_YR;
+        p->prateloss /= NDAYS_IN_YR;
         p->retransmob /= NDAYS_IN_YR;
         p->fdecay /= NDAYS_IN_YR;
         p->fdecaydry /= NDAYS_IN_YR;
@@ -698,7 +744,14 @@ void correct_rate_constants(params *p, int output) {
         p->kdec6 /= NDAYS_IN_YR;
         p->kdec7 /= NDAYS_IN_YR;
         p->nuptakez /= NDAYS_IN_YR;
+        p->puptakez /= NDAYS_IN_YR;
         p->nmax /= NDAYS_IN_YR;
+        p->pmax /= NDAYS_IN_YR;
+//        p->p_atm_deposition /= NDAYS_IN_YR;
+        p->p_rate_par_weather /= NDAYS_IN_YR;
+        p->max_p_biochemical /= NDAYS_IN_YR;
+        p->rate_sorb_ssorb /= NDAYS_IN_YR;
+        p->rate_ssorb_occ /= NDAYS_IN_YR;
     }
 
     return;
@@ -777,13 +830,104 @@ void reset_all_n_pools_and_fluxes(fluxes *f, state *s) {
     return;
 }
 
+void reset_all_p_pools_and_fluxes(fluxes *f, state *s) {
+    /*
+        If the P-Cycle is turned off the way I am implementing this is to
+        do all the calculations and then reset everything at the end. This is
+        a waste of resources but saves on multiple IF statements.
+    */
+
+    /*
+    ** State
+    */
+    s->shootp = 0.0;
+    s->rootp = 0.0;
+    s->crootp = 0.0;
+    s->branchp = 0.0;
+    s->stempimm = 0.0;
+    s->stempmob = 0.0;
+    s->structsurfp = 0.0;
+    s->metabsurfp = 0.0;
+    s->structsoilp = 0.0;
+    s->metabsoilp = 0.0;
+    s->activesoilp = 0.0;
+    s->slowsoilp = 0.0;
+    s->passivesoilp = 0.0;
+    s->inorgp = 0.0;
+    s->inorgavlp = 0.0;
+    s->inorglabp = 0.0;
+    s->inorgsorbp = 0.0;
+    s->inorgssorbp = 0.0;
+    s->inorgoccp = 0.0;
+    s->inorgparp = 0.0;
+    s->stemp = 0.0;
+    s->stempimm = 0.0;
+    s->stempmob = 0.0;
+    s->pstore = 0.0;
+
+    /*
+    ** Fluxes
+    */
+    f->puptake = 0.0;
+    f->ploss = 0.0;
+    f->ppassive = 0.0;
+    f->pgross = 0.0;
+    f->pimmob = 0.0;
+    f->plittrelease = 0.0;
+    f->pmineralisation = 0.0;
+    f->ppleaf = 0.0;
+    f->pproot = 0.0;
+    f->ppcroot = 0.0;
+    f->ppbranch = 0.0;
+    f->ppstemimm = 0.0;
+    f->ppstemmob = 0.0;
+    f->deadleafp = 0.0;
+    f->deadrootp = 0.0;
+    f->deadcrootp = 0.0;
+    f->deadbranchp = 0.0;
+    f->deadstemp = 0.0;
+    f->peaten = 0.0;
+    f->purine = 0.0;
+    f->leafretransp = 0.0;
+    f->p_surf_struct_litter = 0.0;
+    f->p_surf_metab_litter = 0.0;
+    f->p_soil_struct_litter = 0.0;
+    f->p_soil_metab_litter = 0.0;
+    f->p_surf_struct_to_slow = 0.0;
+    f->p_soil_struct_to_slow = 0.0;
+    f->p_surf_struct_to_active = 0.0;
+    f->p_soil_struct_to_active = 0.0;
+    f->p_surf_metab_to_active = 0.0;
+    f->p_surf_metab_to_active = 0.0;
+    f->p_active_to_slow = 0.0;
+    f->p_active_to_passive = 0.0;
+    f->p_slow_to_active = 0.0;
+    f->p_slow_to_passive = 0.0;
+    f->p_slow_biochemical = 0.0;
+    f->p_passive_to_active = 0.0;
+    f->p_lab_in = 0.0;
+    f->p_lab_out = 0.0;
+    f->p_sorb_in = 0.0;
+    f->p_sorb_out = 0.0;
+    f->p_min_to_ssorb = 0.0;
+    f->p_ssorb_to_min = 0.0;
+    f->p_ssorb_to_occ = 0.0;
+    f->p_par_to_min = 0.0;
+    f->p_atm_dep = 0.0;
+
+    return;
+}
+
 void zero_stuff(control *c, state *s) {
     s->shoot = 0.0;
     s->shootn = 0.0;
+    s->shootp = 0.0;
     s->shootnc = 0.0;
+    s->shootpc = 0.0;
     s->lai = 0.0;
     s->cstore = 0.0;
     s->nstore = 0.0;
+    s->pstore = 0.0;
     s->anpp = 0.0;
 
     if (c->deciduous_model) {
@@ -809,20 +953,32 @@ void day_end_calculations(control *c, params *p, state *s, int days_in_year,
         logical defining whether it is the first day of the simulation
     */
 
-    /* update N:C of plant pool */
-    if (float_eq(s->shoot, 0.0))
+    /* update N:C and P:C of plant pool */
+    if (float_eq(s->shoot, 0.0)) {
         s->shootnc = 0.0;
-    else
+        s->shootpc = 0.0;
+    } else {
         s->shootnc = s->shootn / s->shoot;
+        s->shootpc = s->shootp / s->shoot;
+        //fprintf(stderr, "shootp %f\n", s->shootp*100000);
+        //fprintf(stderr, "shootc %f\n", s->shoot);
+        //fprintf(stderr, "shootpc %f\n", s->shootpc);
+    }
 
     /* Explicitly set the shoot N:C */
     if (c->ncycle == FALSE)
         s->shootnc = p->prescribed_leaf_NC;
 
-    if (float_eq(s->root, 0.0))
+    if (c->pcycle == FALSE)
+        s->shootpc = p->prescribed_leaf_PC;
+
+    if (float_eq(s->root, 0.0)) {
         s->rootnc = 0.0;
-    else
+        s->rootpc = 0.0;
+    } else {
         s->rootnc = MAX(0.0, s->rootn / s->root);
+        s->rootpc = MAX(0.0, s->rootp / s->root);
+    }
 
     /* total plant, soil & litter nitrogen */
     s->soiln = s->inorgn + s->activesoiln + s->slowsoiln + s->passivesoiln;
@@ -831,6 +987,15 @@ void day_end_calculations(control *c, params *p, state *s, int days_in_year,
     s->littern = s->litternag + s->litternbg;
     s->plantn = s->shootn + s->rootn + s->crootn + s->branchn + s->stemn;
     s->totaln = s->plantn + s->littern + s->soiln;
+
+    /* total plant, soil & litter phosphorus */
+    s->inorgp = s->inorglabp + s->inorgsorbp + s->inorgssorbp + s->inorgoccp + s->inorgparp;
+    s->soilp = s->inorgavlp + s->activesoilp + s->slowsoilp + s->passivesoilp;
+    s->litterpag = s->structsurfp + s->metabsurfp;
+    s->litterpbg = s->structsoilp + s->metabsoilp;
+    s->litterp = s->litterpag + s->litterpbg;
+    s->plantp = s->shootp + s->rootp + s->crootp + s->branchp + s->stemp;
+    s->totalp = s->plantp + s->litterp + s->soilp + s->inorgssorbp + s->inorgoccp + s->inorgparp;
 
     /* total plant, soil, litter and system carbon */
     s->soilc = s->activesoil + s->slowsoil + s->passivesoil;
@@ -844,6 +1009,7 @@ void day_end_calculations(control *c, params *p, state *s, int days_in_year,
     if (c->passiveconst) {
         s->passivesoil = p->passivesoilz;
         s->passivesoiln = p->passivesoilnz;
+        s->passivesoilp = p->passivesoilpz;
     }
 
     if (init == FALSE)
@@ -874,9 +1040,11 @@ void unpack_met_data(control *c, fluxes *f, met_arrays *ma, met *m, int hod,
         if (hod == 0) {
             m->ndep = ma->ndep[c->hour_idx];
             m->nfix = ma->nfix[c->hour_idx];
+            m->pdep = ma->pdep[c->hour_idx];
         } else {
             m->ndep += ma->ndep[c->hour_idx];
             m->nfix += ma->nfix[c->hour_idx];
+            m->pdep += ma->pdep[c->hour_idx];
         }
     } else {
         m->Ca = ma->co2[c->day_idx];
@@ -899,6 +1067,7 @@ void unpack_met_data(control *c, fluxes *f, met_arrays *ma, met *m, int hod,
         m->press = ma->press[c->day_idx] * KPA_2_PA;
         m->ndep = ma->ndep[c->day_idx];
         m->nfix = ma->nfix[c->day_idx];
+        m->pdep = ma->pdep[c->day_idx];
         m->tsoil = ma->tsoil[c->day_idx];
         m->Tk_am = ma->tam[c->day_idx] + DEG_TO_KELVIN;
         m->Tk_pm = ma->tpm[c->day_idx] + DEG_TO_KELVIN;
@@ -913,7 +1082,10 @@ void unpack_met_data(control *c, fluxes *f, met_arrays *ma, met *m, int hod,
 
     /* N deposition + biological N fixation */
     f->ninflow = m->ndep + m->nfix;
-
+    
+    /* P deposition to fluxes */
+    f->p_atm_dep = m->pdep;
+    
     return;
 }
 
