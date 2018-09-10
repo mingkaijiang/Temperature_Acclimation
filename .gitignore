@@ -20,3 +20,5 @@ src/gday.dSYM*
 .Rproj.user
 
 *.Rproj
+*.Rhistory
+*.csv
