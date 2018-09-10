@@ -360,6 +360,19 @@ int handler(char *section, char *name, char *value, control *c,
             fprintf(stderr, "Unknown triose_p option: %s\n", temp);
             exit(EXIT_FAILURE);
         }
+    } else if (MATCH("control", "tpu_removed")) {
+        if (strcmp(temp, "False") == 0 ||
+            strcmp(temp, "FALSE") == 0 ||
+            strcmp(temp, "false") == 0)
+            c->tpu_removed = FALSE;
+        else if (strcmp(temp, "True") == 0 ||
+                 strcmp(temp, "TRUE") == 0 ||
+                 strcmp(temp, "true") == 0)
+            c->tpu_removed = TRUE;
+        else {
+            fprintf(stderr, "Unknown TPU limitation option: %s\n", temp);
+            exit(EXIT_FAILURE);
+        }
     } else if (MATCH("control", "nuptake_model")) {
         c->nuptake_model = atoi(value);
     } else if (MATCH("control", "puptake_model")) {
@@ -423,12 +436,9 @@ int handler(char *section, char *name, char *value, control *c,
          if (strcmp(temp, "FIXED") == 0||
              strcmp(temp, "fixed") == 0)
              c->respiration_model = FIXED;
-         else if (strcmp(temp, "TEMPERATURE") == 0||
-             strcmp(temp, "temperature") == 0)
-             c->respiration_model = TEMPERATURE;
-         else if (strcmp(temp, "BIOMASS") == 0||
-             strcmp(temp, "biomass") == 0)
-                 c->respiration_model = BIOMASS;
+         else if (strcmp(temp, "VARY") == 0||
+             strcmp(temp, "vary") == 0)
+             c->respiration_model = VARY;
          else {
              fprintf(stderr, "Unknown respiration model: %s\n", temp);
              exit(EXIT_FAILURE);
@@ -462,6 +472,17 @@ int handler(char *section, char *name, char *value, control *c,
             c->water_balance = HYDRAULICS;
         else {
             c->water_balance = BUCKET;
+        }
+    } else if (MATCH("control", "aci_relationship")) {
+        if (strcmp(temp, "WALKER") == 0||
+            strcmp(temp, "walker") == 0)
+            c->aci_relationship = WALKER;
+        else if (strcmp(temp, "ELLSWORTH") == 0||
+                 strcmp(temp, "ellsworth") == 0)
+            c->aci_relationship = ELLSWORTH;
+        else {
+            fprintf(stderr, "Unknown A-Ci relationship: %s\n", temp);
+            exit(EXIT_FAILURE);
         }
     } else if (MATCH("control", "water_stress")) {
         if (strcmp(temp, "False") == 0 ||
@@ -614,6 +635,10 @@ int handler(char *section, char *name, char *value, control *c,
         s->structsurfn = atof(value);
     } else if (MATCH("state", "structsurfp")) {
         s->structsurfp = atof(value);
+    } else if (MATCH("state", "vcmax")) {
+        s->vcmax = atof(value);
+    } else if (MATCH("state", "twq")) {
+        s->twq = atof(value);
     }
 
     /* Params */
@@ -845,6 +870,8 @@ int handler(char *section, char *name, char *value, control *c,
         p->nccnew = atof(value);
     } else if (MATCH("params", "nccnewz")) {
         p->nccnewz = atof(value);
+    } else if (MATCH("params", "p_atm_deposition")) {
+        p->p_atm_deposition = atof(value);
     } else if (MATCH("params", "pcbnew")) {
         p->pcbnew = atof(value);
     } else if (MATCH("params", "pcbnewz")) {
@@ -985,6 +1012,8 @@ int handler(char *section, char *name, char *value, control *c,
         p->rdecay = atof(value);
     } else if (MATCH("params", "rdecaydry")) {
         p->rdecaydry = atof(value);
+    } else if (MATCH("params", "resp_coeff")) {
+        p->resp_coeff = atof(value);
     } else if (MATCH("params", "retransmob")) {
         p->retransmob = atof(value);
     //} else if (MATCH("params", "retransmobp")) {

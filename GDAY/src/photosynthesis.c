@@ -321,7 +321,6 @@ void calculate_jmaxt_vcmaxt(control *c, canopy_wk *cw, params *p, state *s,
         vcmax25 = p->vcmax * cscalar;
         *vcmax = arrhenius(vcmax25, p->eav, tleaf, tref);
         *jmax = peaked_arrhenius(jmax25, p->eaj, tleaf, tref, p->delsj, p->edj);
-
     } else {
         fprintf(stderr, "You haven't set Jmax/Vcmax model: modeljm \n");
         exit(EXIT_FAILURE);
@@ -558,15 +557,11 @@ void mate_C3_photosynthesis(control *c, fluxes *f, met *m, params *p, state *s,
     /* Calculate mate params & account for temperature dependencies */
     N0 = calculate_top_of_canopy_n(p, s, ncontent);   //Unit: g N m-2;
 
-    //fprintf(stderr, "Tk_pm %f\n", m->Tk_pm);
-
     if (c->pcycle == TRUE) {
         P0 = calculate_top_of_canopy_p(p, s, pcontent);   //Unit: g P m-2
     } else {
         P0 = 0.0;
     }
-
-    //fprintf(stderr, "flag 2 C3_photo \n");
 
     gamma_star_am = calculate_co2_compensation_point(p, m->Tk_am, mt);
     gamma_star_pm = calculate_co2_compensation_point(p, m->Tk_pm, mt);
@@ -585,6 +580,10 @@ void mate_C3_photosynthesis(control *c, fluxes *f, met *m, params *p, state *s,
         calculate_jmax_and_vcmax(c, p, s, m->Tk_pm, N0, &jmax_pm,
                                  &vcmax_pm, mt);
     }
+
+    s->vcmax = (vcmax_am + vcmax_pm) / 2.0;
+    
+    //fprintf(stderr, "jmax %f vcmax %f\n", jmax_am, vcmax_am);
 
     ci_am = calculate_ci(c, p, s, m->vpd_am, m->Ca);
     ci_pm = calculate_ci(c, p, s, m->vpd_pm, m->Ca);
@@ -618,35 +617,34 @@ void mate_C3_photosynthesis(control *c, fluxes *f, met *m, params *p, state *s,
         asat_am = MIN(aj_am, ac_am);
         asat_pm = MIN(aj_pm, ac_pm);
     }
-
-    //fprintf(stderr, "ac_pm %f\n", ac_pm);
-    //fprintf(stderr, "aj_pm %f\n", aj_pm);
-    //fprintf(stderr, "ap_pm %f\n", ap_pm);
-    //fprintf(stderr, "asat_pm %f\n", asat_pm);
-
+    
     /* Covert PAR units (umol PAR MJ-1) */
     conv = MJ_TO_J * J_2_UMOL;
     m->par *= conv;
-
+    
     /* LUE (umol C umol-1 PAR) ; note conversion in epsilon */
     lue_am = epsilon(p, asat_am, m->par, alpha_am, daylen);
     lue_pm = epsilon(p, asat_pm, m->par, alpha_pm, daylen);
 
     /* use average to simulate canopy photosynthesis */
     lue_avg = (lue_am + lue_pm) / 2.0;
-
+    
     /* absorbed photosynthetically active radiation (umol m-2 s-1) */
     if (float_eq(s->lai, 0.0))
         f->apar = 0.0;
     else
         f->apar = m->par * s->fipar;
-
+    
     /* convert umol m-2 d-1 -> gC m-2 d-1 */
     conv = UMOL_TO_MOL * MOL_C_TO_GRAMS_C;
     f->gpp_gCm2 = f->apar * lue_avg * conv;
     f->gpp_am = (f->apar / 2.0) * lue_am * conv;
     f->gpp_pm = (f->apar / 2.0) * lue_pm * conv;
     f->npp_gCm2 = f->gpp_gCm2 * p->cue;
+    
+    //fprintf(stderr, "gpp_gCm2 %f, apar %f, lue_avg %f, asat %f, aj %f, ac %f\n",
+    //        f->gpp_gCm2, f->apar, lue_avg, asat_am, aj_am, ac_am);
+    
 
     /* g C m-2 to tonnes hectare-1 day-1 */
     f->gpp = f->gpp_gCm2 * G_AS_TONNES / M2_AS_HA;
@@ -859,6 +857,7 @@ void calculate_jmax_and_vcmax(control *c, params *p, state *s, double Tk,
     */
     double jmax25, vcmax25;
     double conv;
+    double log_jmax, log_vcmax;
 
     *vcmax = 0.0;
     *jmax = 0.0;
@@ -867,17 +866,26 @@ void calculate_jmax_and_vcmax(control *c, params *p, state *s, double Tk,
         *jmax = p->jmax;
         *vcmax = p->vcmax;
     } else if (c->modeljm == 1) {
-        /* the maximum rate of electron transport at 25 degC */
-        jmax25 = p->jmaxna * N0 + p->jmaxnb;
 
-        /* this response is well-behaved for TLEAF < 0.0 */
+        /* current unit for sla: m2 kg-1; convert into m2 g-1 for Walker relationship */
+        if (c->aci_relationship == WALKER) {
+            log_vcmax = 1.993 + 2.555 * log(N0) - 0.372 * log(p->sla/1000.0) + 0.422 * log(N0) * log(p->sla/1000.0);
+            vcmax25 = exp(log_vcmax);
+            
+            log_jmax = 1.197 + 0.847 * log_vcmax;
+            jmax25 = exp(log_jmax);
+        } else if (c->aci_relationship == ELLSWORTH) {
+            
+            jmax25 = p->jmaxna * N0 + p->jmaxnb;
+            
+            vcmax25 = p->vcmaxna * N0 + p->vcmaxnb;
+        }
+
+        
+        *vcmax = arrh(mt, vcmax25, p->eav, Tk);
+        
         *jmax = peaked_arrh(mt, jmax25, p->eaj, Tk,
                             p->delsj, p->edj);
-
-        /* the maximum rate of electron transport at 25 degC */
-        vcmax25 = p->vcmaxna * N0 + p->vcmaxnb;
-
-        *vcmax = arrh(mt, vcmax25, p->eav, Tk);
 
     } else if (c->modeljm == 2) {
         vcmax25 = p->vcmaxna * N0 + p->vcmaxnb;
@@ -939,6 +947,7 @@ void calculate_jmax_and_vcmax_with_p(control *c, params *p, state *s, double Tk,
   double jmax25, vcmax25;
   double jmax25p, jmax25n;
   double vcmax25p, vcmax25n;
+  double log_jmax, log_vcmax;
 
   *vcmax = 0.0;
   *jmax = 0.0;
@@ -947,26 +956,41 @@ void calculate_jmax_and_vcmax_with_p(control *c, params *p, state *s, double Tk,
     *jmax = p->jmax;
     *vcmax = p->vcmax;
   } else if (c->modeljm == 1) {
-    /* the maximum rate of electron transport at 25 degC */
-    jmax25n = p->jmaxna * pow(N0, p->jmaxnb);
+    if (c->aci_relationship == WALKER) {
+        // Walker et al. 2014 global synthesis relationship
+        /* the maximum rate of electron transport at 25 degC */
+        log_vcmax = 3.946 + 0.921 * log(N0) + 0.121 * log(P0) + 0.282 * log(N0) * log(P0);
+        vcmax25 = exp(log_vcmax);
+        
+        /* the maximum rate of electron transport at 25 degC */
+        log_jmax = 1.246 + 0.886 * log_vcmax + 0.089 * log(P0);
+        jmax25 = exp(log_jmax);
+        
+    } else if (c->aci_relationship == ELLSWORTH) {
+        
+        // Ellsworth et al. 2015 PCE EucFACE relationship without TPU limitation
+        /* need to convert SLA from m2 kg-1 to m2 g-1 */
+        jmax25n = p->jmaxna * N0 + p->jmaxnb;
+        jmax25p = p->jmaxpa * P0 + p->jmaxpb;
+        jmax25 = MIN(jmax25n, jmax25p);
+        
+        /* need to convert SLA from m2 kg-1 to m2 g-1 */
+        vcmax25n =  p->vcmaxna * N0 + p->vcmaxnb;
+        vcmax25p = p->vcmaxpa * P0 + p->vcmaxpb;
+        vcmax25 = MIN(vcmax25n, vcmax25p);
+        
+        
+        //fprintf(stderr, "N0 %f, P0 %f, jmax25n %f, jmax25p %f, vcmax25n %f, vcmax25p %f\n",
+        //        N0, P0, jmax25n, jmax25p, vcmax25n, vcmax25p);
+        
+    }
 
-    /* P limitation on jmax */
-    jmax25p = p->jmaxpa * pow(P0, p->jmaxpb);
-
-    jmax25 = MIN(jmax25n, jmax25p);
-
-    /* this response is well-behaved for TLEAF < 0.0 */
+    
+    /* Temperature-dependent relationship ,
+    this response is well-behaved for TLEAF < 0.0 */
     *jmax = peaked_arrh(mt, jmax25, p->eaj, Tk,
                         p->delsj, p->edj);
-
-    /* the maximum rate of electron transport at 25 degC */
-    vcmax25n = p->vcmaxna * pow(N0, p->vcmaxnb);
-
-    /* P limitation on jmax */
-    vcmax25p = p->vcmaxpa * pow(P0, p->vcmaxpb);
-
-    vcmax25 = MIN(vcmax25n, vcmax25p);
-
+    
     *vcmax = arrh(mt, vcmax25, p->eav, Tk);
 
   } else if (c->modeljm == 2) {
@@ -997,7 +1021,7 @@ void calculate_jmax_and_vcmax_with_p(control *c, params *p, state *s, double Tk,
   /*  Function allowing Jmax/Vcmax to be forced linearly to zero at low T */
   adj_for_low_temp(*(&jmax), Tk);
   adj_for_low_temp(*(&vcmax), Tk);
-
+  
   return;
 
 }

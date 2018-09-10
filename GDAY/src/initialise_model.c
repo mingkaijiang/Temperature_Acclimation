@@ -35,6 +35,7 @@ void initialise_control(control *c) {
     c->ncycle = TRUE;               /* Nitrogen cycle on or off? */
     c->pcycle = TRUE;               /* Phosphorus cycle on or off? */
     c->triose_p = TRUE;             /* Triose phosphates limitation on photosynthesis on or off? */
+    c->tpu_removed = TRUE;          /* deducting TPU limitation effect */
     c->nuptake_model = 1;           /* 0=constant uptake, 1=func of N inorgn, 2=depends on rate of soil N availability */
     c->puptake_model = 1;           /* 0=constant uptake, 1=func of P inorgp, 2=depends on rate of soil P availability */
     c->output_ascii = TRUE;         /* If this is false you get a binary file as an output. */
@@ -49,6 +50,7 @@ void initialise_control(control *c) {
     c->use_eff_nc = 0;              /* use constant leaf n:c for  metfrac s */
     c->water_stress = TRUE;         /* water stress modifier turned on=TRUE (default)...ability to turn off to test things without drought stress = FALSE */
     c->water_balance = 0;            /* Water calculations: 0=simple 2 layered bucket; 1=SPA-style hydraulics */
+    c->aci_relationship = WALKER;   /* Controlling for the relationship between jmax and leaf N/P, and vcmax and leaf N/P, based on either Walker 2014 global synthesis or Ellsworth 2015 EucFACE data */
     c->spin_up = FALSE;             /* Spin up to a steady state? If False it just runs the model */
 
     /* Internal calculated */
@@ -205,7 +207,7 @@ void initialise_params(params *p) {
     p->ntheta_topsoil = 5.0;
     p->nuptakez = 0.0;
     p->oi = 210000.0;                 /* oxygen partial pressure (umol mol-1) */
-    // p->p_atm_deposition = 0.001;    /* value according to Newman 1995 = 0.00055 */
+    p->p_atm_deposition = 0.001;    /* value according to Newman 1995 = 0.00055 */
     p->p_rate_par_weather = 0.001;
     p->passivesoilnz = 1.0;
     p->passivesoilpz = 1.0;
@@ -255,6 +257,7 @@ void initialise_params(params *p) {
     p->rateuptake = 2.7;
     p->rdecay = 0.33333;
     p->rdecaydry = 0.33333;
+    p->resp_coeff = 1.2;            /* Tissue respiration rate at 10 deg C; temperate broadleaf evergreen tree value from LPJ */
     p->retransmob = 0.0;
     p->rfmult = 1.0;
     p->root_exu_CUE = -999.9;
@@ -633,6 +636,8 @@ void initialise_state(state *s) {
     s->structsurfn = 0.0473710799214;
     s->structsurfp = 0.01421132;        /* based on structural pool C/P ratio of 500 from Parton et al., 1989, Ecology of arable land. */
     s->canopy_store = 0.0;
+    s->vcmax = 0.0;
+    s->twq = 0.0;
 
     s->wtfac_root = 1.0;
 

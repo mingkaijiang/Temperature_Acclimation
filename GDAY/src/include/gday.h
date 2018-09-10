@@ -35,10 +35,13 @@
 #define MATE 0
 #define BEWDY 1
 
+/* A Ci relationship */
+#define WALKER 0
+#define ELLSWORTH 1
+
 /* Respiration models */
 #define FIXED 0
-#define TEMPERATURE 1
-#define BIOMASS 2
+#define VARY 1
 
 /* Allocation models */
 #define FIXED 0
@@ -91,7 +94,7 @@ void   reset_all_n_pools_and_fluxes(fluxes *, state *);
 void   reset_all_p_pools_and_fluxes(fluxes *, state *);
 void   zero_stuff(control *, state *);
 void   day_end_calculations(control *, params *, state *, int, int);
-void   unpack_met_data(control *, fluxes *f, met_arrays *, met *, int, double);
+void   unpack_met_data(control *, fluxes *f, met_arrays *, met *, params *, int, double);
 void   allocate_numerical_libs_stuff(nrutil *);
 void   fill_up_solar_arrays(canopy_wk *, control *, met_arrays *, params *);
 

@@ -55,7 +55,7 @@ void canopy(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
     year = ma->year[c->hour_idx];
 
     for (hod = 0; hod < c->num_hlf_hrs; hod++) {
-        unpack_met_data(c, f, ma, m, hod, dummy2);
+        unpack_met_data(c, f, ma, m, p, hod, dummy2);
 
         /* calculates diffuse frac from half-hourly incident radiation */
         unpack_solar_geometry(cw, c);
@@ -416,7 +416,7 @@ void calc_leaf_to_canopy_scalar(canopy_wk *cw, params *p) {
 
     return;
 }
-
+/*
 void check_water_balance(control *c, fluxes *f, state *s, double previous_sw,
                          double current_sw, double previous_cs,
                          double current_cs, double year, int doy) {
@@ -427,16 +427,20 @@ void check_water_balance(control *c, fluxes *f, state *s, double previous_sw,
     delta_cs = current_cs - previous_cs;
     f->day_wbal = f->day_ppt - (f->runoff + f->et + delta_cs + delta_sw);
 
-    printf("%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",
-           (int)year, doy,
-           f->day_ppt, f->runoff, \
-           f->et, delta_sw, delta_cs, previous_sw, current_sw,
-           s->predawn_swp, s->midday_lwp, f->day_wbal);
+//    fprintf(stderr, "%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",
+//           (int)year, doy,
+//           f->day_ppt, f->runoff, \
+//           f->et, delta_sw, delta_cs, previous_sw, current_sw,
+//           s->predawn_swp, s->midday_lwp, f->day_wbal);
 
-
+    fprintf(stderr, "%d,%d,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",
+            (int)year, doy,
+            f->day_ppt, f->runoff, \
+            f->et, delta_sw, previous_sw, current_sw,
+            f->day_wbal);
     return;
 }
-
+*/
 int calculate_emax(control *c, canopy_wk *cw, fluxes *f, met *m, params *p,
                     state *s) {
 

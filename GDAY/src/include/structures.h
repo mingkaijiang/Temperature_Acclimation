@@ -28,11 +28,13 @@ typedef struct {
     int   fixleafpc;
     int   grazing;
     int   gs_model;
+    int   aci_relationship;
     int   model_optroot;
     int   modeljm;
     int   ncycle;
     int   pcycle;
     int   triose_p;
+    int   tpu_removed;
     int   num_years;
     int   nuptake_model;
     int   puptake_model;
@@ -188,6 +190,8 @@ typedef struct {
     double canopy_store;
     double psi_s_topsoil;
     double psi_s_root;
+    double vcmax;
+    double twq;                     /* temperature of warmest quarter */
 
     /* hydraulics */
     double *thickness;
@@ -346,6 +350,7 @@ typedef struct {
     double nuptakez;                        /* constant N uptake per year (1/yr) */
     double oi;                              /* intercellular concentration of O2 [umol mol-1] */
     double p_rate_par_weather;              /* parent P material weathering rate [yr-1] */
+    double p_atm_deposition;               /* user-defined atmospheric deposition rate [yr-1] */
     double passivesoilnz;
     double passivesoilpz;
     double passivesoilz;
@@ -396,6 +401,7 @@ typedef struct {
     double rateuptake;                      /* Rate of N uptake from mineral N pool (/yr) from here? http://face.ornl.gov/Finzi-PNAS.pdf Seems to correspond to very low NPP values */
     double rdecay;                          /* root turnover rate (1/yr) */
     double rdecaydry;                       /* root turnover rate - dry soil (1/yr) */
+    double resp_coeff;                       /* Respiration rate: from LPJ ENF, EBF, C3G = 1.2, Trop EBF, C4G = 0.2 */
     double retransmob;                      /* Fraction stem mobile N retranscd (/yr) */
     double rfmult;
     double rooting_depth;                   /* Rooting depth (mm) */

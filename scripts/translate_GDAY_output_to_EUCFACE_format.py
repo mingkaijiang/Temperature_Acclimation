@@ -10,10 +10,11 @@ import os
 import numpy as np
 import csv
 import sys
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import datetime as dt
 import pandas as pd
-from cStringIO import StringIO
+#from io import StringIO
+from io import BytesIO
 
 __author__  = "Martin De Kauwe"
 __version__ = "1.0 (12.05.2014)"
@@ -31,13 +32,13 @@ def translate_output(infname, met_fname):
 
     # load met stuff, i.e. the stuff needed for NCEAS output that G'day
     # does not output
-    #envir = load_met_input_data(met_fname)
+    envir = load_met_input_data(met_fname)
 
     # load the rest of the g'day output
     (gday, git_ver) = load_gday_output(infname)
 
     # merge dictionaries to ease output
-    #data_dict = dict(envir, **gday)
+    data_dict = dict(envir, **gday)
 
     ofname = os.path.join(outdir, "temp.nceas")
     f = open(ofname, "w")
@@ -48,9 +49,9 @@ def translate_output(infname, met_fname):
     writer.writerow(variable)
     writer.writerow(units)
     writer.writerow(variable_names)
-    for i in xrange(len(gday['DOY'])):
-        writer.writerow([("%.8f" % (float(gday[k][i])) \
-                         if gday.has_key(k) else UNDEF)
+    for i in range(len(gday['DOY'])):
+        writer.writerow([("%.8f" % (float(data_dict[k][i])) \
+                         if k in data_dict else UNDEF)
                          for k in variable_names])
 
     # Need to replace the temp file with the infname which is actually
@@ -61,7 +62,8 @@ def remove_comments_from_header(fname):
     """ I have made files with comments which means the headings can't be
     parsed to get dictionary headers for pandas! Solution is to remove these
     comments first """
-    s = StringIO()
+    #s = StringIO()
+    s = BytesIO()
     with open(fname) as f:
         for line in f:
             if '#' in line:
@@ -75,7 +77,8 @@ def remove_comments_from_header_and_get_git_rev(fname):
     """ I have made files with comments which means the headings can't be
     parsed to get dictionary headers for pandas! Solution is to remove these
     comments first """
-    s = StringIO()
+    #s = StringIO()
+    s = BytesIO()
     with open(fname) as f:
         line_counter = 0
         for line in f:
@@ -109,7 +112,7 @@ def load_met_input_data(fname):
     co2 = met_data["co2"]
     ndep = met_data["ndep"] * tonnes_per_ha_to_g_m2
 
-    return {'CO2': co2, 'PPT':precip, 'PAR':par, 'AT':air_temp, 'ST':soil_temp,
+    return {'CO2': co2, 'PREC':precip, 'PAR':par, 'TAIR':air_temp, 'TSOIL':soil_temp,
             'VPD':vpd, 'NDEP':ndep}
 
 def load_gday_output(fname):
@@ -149,10 +152,31 @@ def load_gday_output(fname):
     inorgn = out["inorgn"] * tonnes_per_ha_to_g_m2
     tnc = out["cstore"] * tonnes_per_ha_to_g_m2
     nstorage = out["nstore"] * tonnes_per_ha_to_g_m2
+    pstorage = out["pstore"] * tonnes_per_ha_to_g_m2
     activesoiln = out["activesoiln"] * tonnes_per_ha_to_g_m2
     slowsoiln = out["slowsoiln"] * tonnes_per_ha_to_g_m2
     passivesoiln = out["passivesoiln"] * tonnes_per_ha_to_g_m2
     npoolo = activesoiln + slowsoiln + passivesoiln
+    shootp = out["shootp"] * tonnes_per_ha_to_g_m2
+    stemp = out["stemp"] * tonnes_per_ha_to_g_m2
+    branchp = out["branchp"] * tonnes_per_ha_to_g_m2
+    rootp = out["rootp"] * tonnes_per_ha_to_g_m2
+    crootp = out["crootp"] * tonnes_per_ha_to_g_m2
+    litterpag = out["litterpag"] * tonnes_per_ha_to_g_m2
+    litterpbg = out["litterpbg"] * tonnes_per_ha_to_g_m2
+    psoil = out["soilp"] * tonnes_per_ha_to_g_m2
+    inorgp = out["inorgp"] * tonnes_per_ha_to_g_m2
+    inorglabp = out["inorglabp"] * tonnes_per_ha_to_g_m2
+    inorgsorbp = out["inorgsorbp"] * tonnes_per_ha_to_g_m2
+    inorgavlp = out["inorgavlp"] * tonnes_per_ha_to_g_m2
+    inorgssorbp = out["inorgssorbp"] * tonnes_per_ha_to_g_m2
+    inorgoccp = out["inorgoccp"] * tonnes_per_ha_to_g_m2
+    inorgparp = out["inorgparp"] * tonnes_per_ha_to_g_m2
+    activesoilp = out["activesoilp"] * tonnes_per_ha_to_g_m2
+    slowsoilp = out["slowsoilp"] * tonnes_per_ha_to_g_m2
+    passivesoilp = out["passivesoilp"] * tonnes_per_ha_to_g_m2
+    ppoolo = activesoilp + slowsoilp + passivesoilp
+
 
     # fluxes outputs
     beta = out["wtfac_root"]
@@ -199,6 +223,22 @@ def load_gday_output(fname):
     slowsoil = out["slowsoil"] * tonnes_per_ha_to_g_m2
     passivesoil = out["passivesoil"] * tonnes_per_ha_to_g_m2
     cfretransn = out["leafretransn"] * tonnes_per_ha_to_g_m2
+    deadleafp = out["deadleafp"] * tonnes_per_ha_to_g_m2
+    deadbranchp = out["deadbranchp"] * tonnes_per_ha_to_g_m2
+    deadstemp = out["deadstemp"] * tonnes_per_ha_to_g_m2
+    deadrootp = out["deadrootp"] * tonnes_per_ha_to_g_m2
+    deadcrootp = out["deadcrootp"] * tonnes_per_ha_to_g_m2
+    pup = out["puptake"] * tonnes_per_ha_to_g_m2
+    pgross = out["pgross"] * tonnes_per_ha_to_g_m2
+    pmin = out["pmineralisation"] * tonnes_per_ha_to_g_m2
+    ppleaf = out["ppleaf"] * tonnes_per_ha_to_g_m2
+    pproot = out["pproot"] * tonnes_per_ha_to_g_m2
+    ppcroot = out["ppcroot"] * tonnes_per_ha_to_g_m2
+    ppstemimm = out["ppstemimm"] * tonnes_per_ha_to_g_m2
+    ppstemmob = out["ppstemmob"] * tonnes_per_ha_to_g_m2
+    ppbranch = out["ppbranch"] * tonnes_per_ha_to_g_m2
+    pleach = out["ploss"] * tonnes_per_ha_to_g_m2
+    cfretransp = out["leafretransp"] * tonnes_per_ha_to_g_m2
 
     # extra traceability stuff
     tfac_soil_decomp = out["tfac_soil_decomp"]
@@ -231,11 +271,12 @@ def load_gday_output(fname):
     nact = out["activesoiln"] * tonnes_per_ha_to_g_m2
 
 
-
     # Misc stuff we don't output
     drainage = [UNDEF] * len(doy)
     rleaf = [UNDEF] * len(doy)
     rwood = [UNDEF] * len(doy)
+    rcr = [UNDEF] * len(doy)
+    rfr = [UNDEF] * len(doy)
     rgrow = [UNDEF] * len(doy)
     rsoil = [UNDEF] * len(doy)
     cex = [UNDEF] * len(doy)
@@ -244,47 +285,72 @@ def load_gday_output(fname):
     sh = [UNDEF] * len(doy)
     ccoarse_lit = [UNDEF] * len(doy)
     ndw = [UNDEF] * len(doy)
-    nfix = [UNDEF] * len(doy)
+    pclitb = [UNDEF] * len(doy)
     nvol = [UNDEF] * len(doy)
     gb = [UNDEF] * len(doy)
     grepr = [UNDEF] * len(doy)
     cwretransn = [UNDEF] * len(doy)
     ccrretransn = [UNDEF] * len(doy)
     cfrretransn = [UNDEF] * len(doy)
+    plretr = [UNDEF] * len(doy)
+    pwretr = [UNDEF] * len(doy)
+    pcrretr = [UNDEF] * len(doy)
+    pfrretr = [UNDEF] * len(doy)
 
     # Misc calcs from fluxes/state
     lma = shoot / lai
     ncon = shootn / shoot
+    nflit = litternag + litternbg
+    pflit = litterpag + litterpbg
+    pcon = shootp / shoot
     recosys = rh + ra
+    secp = inorgsorbp + inorgssorbp
     cw = stem + branch
+    cwp = stemp + branchp
     gw = cpstem + cpbranch
     cwn = stemn + branchn
     cwin = deadstems + deadbranch
     ccrlin = deadcroots
     cfrlin = deadroots
     ndeadwood = deadbranchn + deadstemn
+    pdeadwood = deadbranchp + deadstemp
     nwood_growth = npstemimm + npstemmob + npbranch
+    pwood_growth = ppstemimm + ppstemmob + ppbranch
 
-    return {'YEAR':year, 'DOY':doy, 'SW':pawater_root,
+    return {'YEAR':year, 'DOY':doy, 'SW':pawater_root, 'SWPA':pawater_root,
             'NEP':nep, 'GPP':gpp, 'NPP':npp, 'CEX':cex, 'CVOC':cvoc,
-            'RECO':recosys, 'RAUTO':ra, 'RLEAF':rleaf, 'RWOOD':rwood,
-            'RGROW':rgrow, 'RHET':rh, 'RSOIL':rsoil, 'ET':et, 'T':trans,
+            'RECO':recosys, 'RAU':ra, 'RL':rleaf, 'RW':rwood,
+            'RCR':rcr, 'RFR':rfr,
+            'RGR':rgrow, 'RHET':rh, 'RSOIL':rsoil, 'ET':et, 'T':trans,
             'ES':soil_evap, 'EC':can_evap, 'RO':runoff, 'DRAIN':drainage,
             'LE':lh, 'SH':sh, 'CL':shoot, 'CW':cw, 'CCR':coarse_root,
-            'CFR':fine_root, 'TNC':tnc, 'CFLIT':litterc, 'CFLITA':littercag,
+            'CFR':fine_root, 'CSTOR':tnc, 'CFLIT':litterc, 'CFLITA':littercag,
             'CFLITB':littercbg, 'CCLITB':ccoarse_lit, 'CSOIL':soilc,
-            'GL':gl, 'GW':gw, 'GCR':gcr, 'GR':gr, 'GREPR':grepr, 'CLLFALL':deadleaves,
-            'CCRLIN':ccrlin, 'CFRLIN':cfrlin, 'CWIN':cwin, 'LAI':lai, 'LMA':lma, 'NCON':ncon,
-            'NCAN':shootn, 'NWOOD':cwn, 'NCR':coarse_rootn, 'NFR':rootn,
-            'NSTOR':nstorage, 'NLIT':litternag, 'NRLIT':litternbg, 'NDW':ndw,
-            'NSOIL':nsoil, 'NPOOLM':inorgn, 'NPOOLO':npoolo, 'NFIX':nfix,
-            'NLITIN':deadleafn, 'NWLIN':ndeadwood, 'NCRLIN':deadcrootn,
-            'NFRLIN':deadrootn, 'NUP':nup,
+            'CGL':gl, 'CGW':gw, 'CGCR':gcr, 'CGFR':gr, 'CREPR':grepr, 'CLITIN':deadleaves,
+            'CCRLIN':ccrlin, 'CFRLIN':cfrlin, 'CWLIN':cwin, 'LAI':lai, 'LMA':lma, 'NCON':ncon,
+            'NL':shootn, 'NW':cwn, 'NCR':coarse_rootn, 'NFR':rootn,
+            'NSTOR':nstorage, 'NFLIT': nflit, 'NFLITA':litternag, 'NFLITB':litternbg, 'NCLITB':ndw,
+            'NSOIL':nsoil, 'NPMIN':inorgn, 'NPORG':npoolo, 
+            'NGL':npleaf, 'NGW':nwood_growth, 'NGCR':npcroot, 'NGFR':nproot,
+            'NLITIN':deadleafn, 'NCRLIN':deadcrootn,
+            'NFRLIN':deadrootn, 'NWLIN':ndeadwood, 'NUP':nup,
             'NGMIN':ngross, 'NMIN':nmin, 'NVOL': nvol, 'NLEACH':nleach,
-            'NGL':npleaf, 'NGW':nwood_growth, 'NGCR':npcroot, 'NGR':nproot,
+            'NLRETR':cfretransn, 'NWRETR':cwretransn,
+            'NCRRETR':ccrretransn, 'NFRRETR':cfrretransn,
             'APARd':apar, 'GCd':gcd, 'GAd':ga, 'Gbd':gb, 'Betad':beta,
-            'NLRETRANS':cfretransn, 'NWRETRANS':cwretransn,
-            'NCRRETRANS':ccrretransn, 'NFRRETRANS':cfrretransn,
+            'PL':shootp, 'PW':cwp,
+            'PCR':crootp, 'PFR':rootp,
+            'PSTOR':pstorage, 'PFLIT':pflit,
+            'PFLITA':litterpag, 'PFLITB':litterpbg, 'PCLITB':pclitb,
+            'PSOIL':psoil, 'PLAB':inorglabp,
+            'PSEC':secp, 'POCC':inorgoccp,
+            'PPAR':inorgparp,
+            'PPMIN':inorgp, 'PPORG':ppoolo,
+            'PLITIN':deadleafp, 'PCRLIN':deadcrootp,
+            'PFRLIN':deadrootp, 'PWLIN':pdeadwood, 'PUP':pup,
+            'PGMIN':pgross, 'PMIN':pmin, 'PLEACH':pleach,
+            'PGL':ppleaf, 'PGW':pwood_growth, 'PGCR':ppcroot, 'PGFR':pproot,
+            'PLRETR':cfretransp, 'PWRETR':pwretr, 'PFRRETR':pcrretr, 'PFRRETR':pfrretr, 
             'CTOACTIVE':c_into_active, 'CTOSLOW':c_into_slow,
             'CTOPASSIVE':c_into_passive, 'CACTIVETOSLOW':active_to_slow,
             'CACTIVETOPASSIVE':active_to_passive, 'CSLOWTOACTIVE':slow_to_active,
@@ -311,7 +377,8 @@ def load_gday_output(fname):
 
 
 def setup_units():
-    units = ['--','--','mm', 'gC m-2 d-1', 'gC m-2 d-1',
+    units = ['--','--','Mean ppm', 'mm d-1', 'mol m-2', 'Mean DegC', 'Mean DegC',
+                'kPa h', 'mm', 'mm', 'gN m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1',
                 'gC m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1',
                 'gC m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1',
                 'gC m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1', 'kgH2O m-2 d-1',
@@ -323,15 +390,26 @@ def setup_units():
                 'gC m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1',
                 'gC m-2 d-1', 'm2 m-2', 'gC m-2',
                 'gN gd.m.-1', 'gN m-2', 'gN m-2', 'gN m-2', 'gN m-2', 'gN m-2',
-                'gN m-2', 'gN m-2', 'gN m-2', 'gN m-2 0 to 30 cm',
+                'gN m-2', 'gN m-2', 'gN m-2', 'gN m-2', 'gN m-2 0 to 30 cm',
                 'gN m-2 0 to 30 cm', 'gN m-2 0 to 30 cm', 'gN m-2 d-1',
                 'gN m-2 d-1', 'gN m-2 d-1', 'gN m-2 d-1', 'gN m-2 d-1',
                 'gN m-2 d-1', 'gN m-2 d-1', 'gN m-2 d-1', 'gN m-2 d-1',
                 'gN m-2 d-1', 'gN m-2 d-1', 'gN m-2 d-1', 'gN m-2 d-1',
-                'gN m-2 d-1',
-                'MJ m-2 d-1', 'mol H2O m-2 s-1', 'mol H2O m-2 s-1',
-                'mol H2O m-2 s-1', 'frac', 'gN m-2 d-1', 'gN m-2 d-1',
+                'gN m-2 d-1', 'gN m-2 d-1', 'gN m-2 d-1',
                 'gN m-2 d-1', 'gN m-2 d-1',
+                'MJ m-2 d-1', 'mol H2O m-2 s-1', 'mol H2O m-2 s-1',
+                'mol H2O m-2 s-1', 'frac',
+                'gP m-2', 'gP m-2', 'gP m-2',
+                'gP m-2', 'gP m-2', 'gP m-2',
+                'gP m-2', 'gP m-2', 'gP m-2',
+                'gP m-2', 'gP m-2',
+                'gP m-2', 'gP m-2',
+                'gP m-2', 'gP m-2',
+                'gP m-2','gP m-2 d-1', 'gP m-2 d-1',
+                'gP m-2 d-1','gP m-2 d-1', 'gP m-2 d-1',
+                'gP m-2 d-1', 'gP m-2 d-1', 'gP m-2 d-1',
+                'gP m-2 d-1', 'gP m-2 d-1', 'gP m-2 d-1', 'gP m-2 d-1',
+                'gP m-2 d-1', 'gP m-2 d-1', 'gP m-2 d-1', 'gP m-2 d-1',
                 'gC m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1',
                 'gC m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1', 'gC m-2 d-1',
                 'gC m-2', 'gC m-2', 'gC m-2',
@@ -345,13 +423,16 @@ def setup_units():
     return units
 
 def setup_varnames():
-    variable = ['Year', 'Day of the year',
-                'Total soil water content', 'Net Eco Prod',
+    variable = ['Year', 'Day of the year', 'CO2', 'Precipitation', 'PAR',
+                'Air temp canopy', 'Soil temp 10 cm', 'Vapour Pres Def',
+                'Total soil water content', 'Plant available soil water content',
+                'N deposition', 'Net Eco Prod',
                 'Gross Prim Prod', 'Net Prim Prod', 'C exudation',
                 'C VOC Flux', 'Resp ecosystem', 'Resp autotrophic',
                 'Resp leaves (maint)', 'Resp Wood (maint)',
+                'Resp coarse root (maint)',
                 'Resp Fine Root (maint)', 'Resp growth',
-                'Resp heterotrophic', 'Resp from soil',
+                'Resp heterotrophic',
                 'Evapotranspiration', 'Transpiration', 'Soil Evaporation',
                 'Canopy evaporation', 'Runoff', 'Drainage', 'Latent Energy',
                 'Sensible Heat', 'C Leaf Mass', 'C Wood Mass',
@@ -366,21 +447,38 @@ def setup_varnames():
                 'C Wood/branch inputs',
                 'LAI projected', 'Leaf gC/leaf area', 'N Conc Leaves',
                 'N Mass Leaves', 'N Mass Wood', 'N Mass Coarse Roots',
-                'N Mass Fine Roots', 'N storage', 'N litter aboveground',
+                'N Mass Fine Roots', 'N storage', 'N fine litter total', 'N litter aboveground',
                 'N litter belowground', 'N Dead wood', 'N Soil Total',
                 'N in Mineral form', 'N in Organic form', 'N fixation',
-                'N Leaf Litterfall', 'N Wood/brch litterfall',
+                'N Leaf growth', 'N Wood growth', 'N CR growth', 'N Fine Root growth',
+                'N Leaf Litterfall',
                 'N Coarse Root litter input', 'N Fine Root litter input',
-                'N Biomass Uptake',
+                'N Wood/brch litterfall', 'N Biomass Uptake',
                 'N Gross Mineralization', 'N Net mineralization',
-                'N Volatilization', 'N Leaching', 'N Leaf growth',
-                'N Wood growth', 'N CR growth', 'N Fine Root growth',
+                'N Volatilization', 'N Leaching',
+                'Foliage retranslocation',
+                'Wood/Branch retranslocation', 'Coarse Root retranslocation',
+                'Fine Root retranslocation',
                 'Aborbed PAR', 'Average daytime canopy conductance',
                 'Average daytime aerodynamic conductance',
                 'Average daytime leaf boundary conductance',
-                'Soil moisture stress', 'Foliage retranslocation',
-                'Wood/Branch retranslocation', 'Coarse Root retranslocation',
-                'Fine Root retranslocation',
+                'Soil moisture stress',
+                'P Mass Leaves',
+                'P Mass Wood', 'P Mass Coarse Roots', 'P Mass Fine Roots',
+                'P storage', 'P litter total', 'P litter aboveground', 'P litter belowground',
+                'P coarse litter',
+                'P Soil Total', 'P in labile form',
+                'P in secondary form',
+                'P in occluded form', 'P parent pool',
+                'P Inorganic pool',
+                'P in Organic form','P Leaf Litterfall', 
+                'P Coarse Root litter input','P Fine Root litter input', 'P Wood/brch litterfall',
+                'P Biomass Uptake',
+                'P Gross Mineralisation', 'P Net mineralisation', 'P Leaching',
+                'P Leaf growth', 'P Wood growth', 'P CR growth', 'P Fine Root growth',
+                'P Foliage retranslocation',
+                'P Wood/Branch retranslocation', 'P Coarse Root retranslocation',
+                'P Fine Root retranslocation',
                 'C fluxes from litter & slow/passive to active soil pool',
                 'C fluxes from litter & active soil pool to slow pool',
                 'C fluxes from active & slow soil pool to passive pool',
@@ -414,20 +512,33 @@ def setup_varnames():
 
 
 
-    variable_names = ['YEAR', 'DOY',
-                      'SW', 'NEP', 'GPP', 'NPP', 'CEX', 'CVOC',
-                      'RECO', 'RAUTO', 'RLEAF', 'RWOOD', 'RROOT', 'RGROW',
-                      'RHET', 'RSOIL',
+    variable_names = ['YEAR', 'DOY', 'CO2', 'PREC', 'PAR', 'TAIR', 'TSOIL', 'VPD',
+                      'SW', 'SWPA', 'NDEP', 'NEP', 'GPP', 'NPP', 'CEX', 'CVOC',
+                      'RECO', 'RAU', 'RL', 'RW', 'RCR', 'RFR', 'RGR',
+                      'RHET',
                       'ET', 'T', 'ES', 'EC', 'RO', 'DRAIN', 'LE', 'SH',
-                      'CL', 'CW', 'CCR', 'CFR', 'TNC', 'CFLIT', 'CFLITA',
-                      'CFLITB', 'CCLITB', 'CSOIL', 'GL', 'GW', 'GCR', 'GR',
-                      'GREPR','CLLFALL', 'CCRLIN', 'CFRLIN','CWIN', 'LAI',
-                      'LMA', 'NCON', 'NCAN', 'NWOOD', 'NCR', 'NFR', 'NSTOR',
-                      'NLIT','NRLIT', 'NDW', 'NSOIL', 'NPOOLM', 'NPOOLO', 'NFIX',
-                      'NLITIN', 'NWLIN', 'NCRLIN', 'NFRLIN','NUP', 'NGMIN', 'NMIN',
-                      'NVOL', 'NLEACH', 'NGL', 'NGW', 'NGCR', 'NGR', 'APARd',
-                      'GCd', 'GAd', 'GBd', 'Betad','NLRETRANS', 'NWRETRANS',
-                      'NCRRETRANS', 'NFRRETRANS',
+                      'CL', 'CW', 'CCR', 'CFR', 'CSTOR', 'CFLIT', 'CFLITA',
+                      'CFLITB', 'CCLITB', 'CSOIL', 'CGL', 'CGW', 'CGCR', 'CGFR',
+                      'CREPR','CLITIN', 'CCRLIN', 'CFRLIN','CWLIN', 'LAI',
+                      'LMA', 'NCON', 'NL', 'NW', 'NCR', 'NFR', 'NSTOR',
+                      'NFLIT', 'NFLITA','NFLITB', 'NCLITB', 'NSOIL', 'NPMIN', 'NPORG', 'NFIX',
+                      'NGL', 'NGW', 'NGCR', 'NGFR',
+                      'NLITIN', 'NCRLIN', 'NFRLIN','NWLIN', 'NUP', 'NGMIN', 'NMIN',
+                      'NVOL', 'NLEACH', 'NLRETR', 'NWRETR',
+                      'NCRRETR', 'NFRRETR', 'APARd',
+                      'GCd', 'GAd', 'GBd', 'Betad',
+                      'PL', 'PW',
+                      'PCR', 'PFR','PSTOR',
+                      'PFLIT', 'PFLITA', 'PFLITB', 'PCLITB',
+                      'PSOIL', 'PLAB',
+                      'PSEC', 'POCC',
+                      'PPAR',
+                      'PPMIN', 'PPORG',
+                      'PLITIN', 'PCRLIN',
+                      'PFRLIN', 'PWLIN', 'PUP',
+                      'PGMIN', 'PMIN', 'PLEACH',
+                      'PGL', 'PGW', 'PGCR', 'PGFR',
+                      'PLRETR', 'PWRETR', 'PCRRETR', 'PFRRETR',
                       'CTOACTIVE', 'CTOSLOW', 'CTOPASSIVE', 'CACTIVETOSLOW',
                       'CACTIVETOPASSIVE', 'CSLOWTOACTIVE', 'CSLOWTOPASSIVE',
                       'CPASSIVETOACTIVE', 'CACTIVE', 'CSLOW', 'CPASSIVE',
@@ -440,8 +551,3 @@ def setup_varnames():
 
     return variable, variable_names
 
-
-if __name__ == "__main__":
-    fname = "dk_fixco2_fixndep_forest_equilib.out"
-    met_fname = "duke_equilibrium_metdata_fixndep_0.004_fixco2_270.gin"
-    translate_output(fname, met_fname)

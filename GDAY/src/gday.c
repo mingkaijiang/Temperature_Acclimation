@@ -386,6 +386,8 @@ void run_sim(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
         else
             c->num_days = 365;
 
+        calc_warmest_quarter_temp(c, p, ma, m, s, year);
+
         calculate_daylength(s, c->num_days, p->latitude);
 
         if (c->deciduous_model) {
@@ -413,7 +415,7 @@ void run_sim(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
 
 
             if (! c->sub_daily) {
-                unpack_met_data(c, f, ma, m, dummy, s->day_length[doy]);
+                unpack_met_data(c, f, ma, m, p, dummy, s->day_length[doy]);
             }
             calculate_litterfall(c, f, p, s, doy, &fdecay, &rdecay);
 
@@ -574,8 +576,8 @@ void spin_up_pools(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
       185-205, specifically page 196.
     */
     double tol_c = 5E-03;
-    double tol_n = 5E-04;
-    double tol_p = 5E-05;
+    double tol_n = 5E-03;
+    double tol_p = 5E-03;
     double prev_plantc = 99999.9;
     double prev_soilc = 99999.9;
     double prev_plantn = 99999.9;
@@ -608,7 +610,7 @@ void spin_up_pools(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
             fabs((prev_plantn) - (s->plantn)) < tol_n &&
             fabs((prev_soiln) - (s->soiln)) < tol_n &&
             fabs((prev_plantp) - (s->plantp)) < tol_p &&
-            fabs((prev_soilp) - (s->inorgavlp)) < tol_p) {
+            fabs((prev_soilp) - (s->soilp)) < tol_p) {
             break;
         } else {
             prev_plantc = s->plantc;
@@ -616,7 +618,7 @@ void spin_up_pools(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
             prev_plantn = s->plantn;
             prev_soiln = s->soiln;
             prev_plantp = s->plantp;
-            prev_soilp = s->inorgavlp;
+            prev_soilp = s->soilp;
 
             /* 1000 years (50 yrs x 20 cycles) */
             for (i = 0; i < 20; i++) {
@@ -625,14 +627,13 @@ void spin_up_pools(canopy_wk *cw, control *c, fluxes *f, met_arrays *ma, met *m,
             if (c->pcycle) {
                 /* Have we reached a steady state? */
                 fprintf(stderr,
-                        "Spinup: Plant C - %f, Soil C - %f, \
-                         Soil N - %f, Soil avl P - %f\n",
-                        s->plantc, s->soilc, s->soiln, s->inorgavlp);
+                        "Spinup: Leaf C - %f, Leaf CN - %f, Leaf CP - %f, Wood C - %f, Leaf N - %f, Leaf P - %f, Soil P - %f, LAI - %f\n",
+                        s->shoot, s->shoot/s->shootn, s->shoot/s->shootp, s->stem, s->shootn, s->shootp, s->soilp, s->lai);
             } else {
               /* Have we reached a steady state? */
               fprintf(stderr,
-                      "Spinup: Plant C - %f, Soil C - %f\n",
-                      s->plantc, s->soilc);
+                      "Spinup: Leaf C - %f, Leaf CN - %f, Wood CN - %f, Wood C - %f, Leaf P - %f, LAI - %f\n",
+                      s->shoot, s->shoot/s->shootn, s->stem/s->stemn, s->stem, s->shootp, s->lai);
             }
         }
     }
@@ -717,7 +718,7 @@ void correct_rate_constants(params *p, int output) {
         p->puptakez *= NDAYS_IN_YR;
         p->nmax *= NDAYS_IN_YR;
         p->pmax *= NDAYS_IN_YR;
-//        p->p_atm_deposition *= NDAYS_IN_YR;
+        p->p_atm_deposition *= NDAYS_IN_YR;
         p->p_rate_par_weather *= NDAYS_IN_YR;
         p->max_p_biochemical *= NDAYS_IN_YR;
         p->rate_sorb_ssorb *= NDAYS_IN_YR;
@@ -747,7 +748,7 @@ void correct_rate_constants(params *p, int output) {
         p->puptakez /= NDAYS_IN_YR;
         p->nmax /= NDAYS_IN_YR;
         p->pmax /= NDAYS_IN_YR;
-//        p->p_atm_deposition /= NDAYS_IN_YR;
+        p->p_atm_deposition /= NDAYS_IN_YR;
         p->p_rate_par_weather /= NDAYS_IN_YR;
         p->max_p_biochemical /= NDAYS_IN_YR;
         p->rate_sorb_ssorb /= NDAYS_IN_YR;
@@ -960,9 +961,6 @@ void day_end_calculations(control *c, params *p, state *s, int days_in_year,
     } else {
         s->shootnc = s->shootn / s->shoot;
         s->shootpc = s->shootp / s->shoot;
-        //fprintf(stderr, "shootp %f\n", s->shootp*100000);
-        //fprintf(stderr, "shootc %f\n", s->shoot);
-        //fprintf(stderr, "shootpc %f\n", s->shootpc);
     }
 
     /* Explicitly set the shoot N:C */
@@ -990,12 +988,12 @@ void day_end_calculations(control *c, params *p, state *s, int days_in_year,
 
     /* total plant, soil & litter phosphorus */
     s->inorgp = s->inorglabp + s->inorgsorbp + s->inorgssorbp + s->inorgoccp + s->inorgparp;
-    s->soilp = s->inorgavlp + s->activesoilp + s->slowsoilp + s->passivesoilp;
+    s->soilp = s->inorgp + s->activesoilp + s->slowsoilp + s->passivesoilp;
     s->litterpag = s->structsurfp + s->metabsurfp;
     s->litterpbg = s->structsoilp + s->metabsoilp;
     s->litterp = s->litterpag + s->litterpbg;
     s->plantp = s->shootp + s->rootp + s->crootp + s->branchp + s->stemp;
-    s->totalp = s->plantp + s->litterp + s->soilp + s->inorgssorbp + s->inorgoccp + s->inorgparp;
+    s->totalp = s->plantp + s->litterp + s->soilp;// + s->inorgssorbp + s->inorgoccp + s->inorgparp;
 
     /* total plant, soil, litter and system carbon */
     s->soilc = s->activesoil + s->slowsoil + s->passivesoil;
@@ -1019,7 +1017,7 @@ void day_end_calculations(control *c, params *p, state *s, int days_in_year,
     return;
 }
 
-void unpack_met_data(control *c, fluxes *f, met_arrays *ma, met *m, int hod,
+void unpack_met_data(control *c, fluxes *f, met_arrays *ma, met *m, params *p, int hod,
                      double day_length) {
 
     double c1, c2;
@@ -1084,7 +1082,7 @@ void unpack_met_data(control *c, fluxes *f, met_arrays *ma, met *m, int hod,
     f->ninflow = m->ndep + m->nfix;
     
     /* P deposition to fluxes */
-    f->p_atm_dep = m->pdep;
+    f->p_atm_dep = p->p_atm_deposition;
     
     return;
 }
