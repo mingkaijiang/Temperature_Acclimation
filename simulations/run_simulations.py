@@ -22,7 +22,7 @@ __version__ = "1.0 (31.03.2015)"
 __email__   = "mdekauwe@gmail.com"
 
 USER = os.getlogin()
-sys.path.append('/Users/%s/Documents/Git/GDAY/scripts' % (USER))
+sys.path.append('/Users/%s/Documents/Research/Projects/Temperature_acclimation/Git/GDAY/scripts' % (USER))
 import adjust_gday_param_file as ad
 
 sys.path.append("../scripts")
