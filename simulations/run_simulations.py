@@ -17,9 +17,9 @@ import shutil
 import sys
 import subprocess
 
-__author__  = "Martin De Kauwe"
-__version__ = "1.0 (31.03.2015)"
-__email__   = "mdekauwe@gmail.com"
+__author__  = "M Jiang"
+__version__ = "1.0 (12.09.2018)"
+__email__   = "m.jiang@westernsydney.edu.au"
 
 USER = os.getlogin()
 sys.path.append('/Users/%s/Documents/Research/Projects/Temperature_acclimation/Git/GDAY/scripts' % (USER))
@@ -38,7 +38,7 @@ def main(experiment_id, latitude, longitude, albedo, topsoil_type,
     base_param_name = "base_start"
 
     base_dir = os.path.dirname(os.getcwd())
-    base_param_dir = "/Users/%s/Documents/Git/GDAY/example/params" % (USER)
+    base_param_dir = "/Users/%s/Documents/Research/Projects/Temperature_acclimation/Git/GDAY/example/params" % (USER)
     param_dir = os.path.join(base_dir, "params")
     met_dir = os.path.join(base_dir, "met_data")
     run_dir = os.path.join(base_dir, "outputs")
@@ -332,32 +332,32 @@ if __name__ == "__main__":
     row = int( (yurcorner - latitude) / cellsize )
     col = int( (longitude - xllcorner) / cellsize )
 
-    soils_base_path = "/Users/%s/Documents/PostDoc/GDAY" % (USER)
+    soils_base_path = "/Users/%s/Documents/Research/Projects/Temperature_acclimation/Git/GDAY/met_data" % (USER)
 
 
     F = ReadFltFile()
-    fn = os.path.join(soils_base_path, "soil_surface_data/SurfaceAlbedo_AWAP_grid.flt")
+    fn = os.path.join(soils_base_path, "SurfaceAlbedo_AWAP_grid.flt")
     data = F.load_flt_file(fn)
     albedo = data[row-1, col-1]
 
-    fn = os.path.join(soils_base_path, "Soils/CLY_top_soil_layer_AWAP_5km.bin")
+    fn = os.path.join(soils_base_path, "CLY_top_soil_layer_AWAP_5km.bin")
     f = open(fn, "r")
     clay_topsoil = np.fromfile(f, np.float32).reshape(nrows, ncols)[row-1, col-1] / 100.
     f.close()
 
-    fn = os.path.join(soils_base_path, "Soils/SND_top_soil_layer_AWAP_5km.bin")
+    fn = os.path.join(soils_base_path, "SND_top_soil_layer_AWAP_5km.bin")
     f = open(fn, "r")
     sand_topsoil = np.fromfile(f, np.float32).reshape(nrows, ncols)[row-1, col-1] / 100.
     f.close()
 
     silt_topsoil = max(0.0, 1.0 - sand_topsoil - clay_topsoil)
 
-    fn = os.path.join(soils_base_path, "Soils/CLY_rootzone_soil_layer_AWAP_5km.bin")
+    fn = os.path.join(soils_base_path, "CLY_rootzone_soil_layer_AWAP_5km.bin")
     f = open(fn, "r")
     clay_rootzone = np.fromfile(f, np.float32).reshape(nrows, ncols)[row-1, col-1] / 100.
     f.close()
 
-    fn = os.path.join(soils_base_path, "Soils/SND_rootzone_soil_layer_AWAP_5km.bin")
+    fn = os.path.join(soils_base_path, "SND_rootzone_soil_layer_AWAP_5km.bin")
     f = open(fn, "r")
     sand_rootzone = np.fromfile(f, np.float32).reshape(nrows, ncols)[row-1, col-1] / 100.
     f.close()
