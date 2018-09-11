@@ -858,6 +858,7 @@ void calculate_jmax_and_vcmax(control *c, params *p, state *s, double Tk,
     double jmax25, vcmax25;
     double conv;
     double log_jmax, log_vcmax;
+    double jvr, eaj, eav, delsj;
 
     *vcmax = 0.0;
     *jmax = 0.0;
@@ -907,14 +908,47 @@ void calculate_jmax_and_vcmax(control *c, params *p, state *s, double Tk,
         vcmax25 = p->vcmax;
         *vcmax = arrh(mt, vcmax25, p->eav, Tk);
 
+    } else if (c->modeljm == 4) {
+        /* Temperature acclimation function 
+         added global parameters:
+                 thome: home temperature;
+                 tgrow: growth temperature;
+        
+         added private parameters:
+                 jvr: Jmax at 25 C / Vcmax at 25 C
+                 eaj;
+                 eav;
+                 delsj;
+        */
+        
+        /* Calculate jvr - Jmax at 25 degree C / Vcmax at 25 degree C */
+        jvr = 2.195 - 0.0237 * p->thome - 0.0219 * (p->thome - p->tgrow);
+        
+        /* Calculate Jmax */
+        jmax25 = p->vcmax25 * jvr;
+        
+        /* Calculate temperature dependent eav */
+        eav = 42.6 + 1.14 * p->tgrow;
+        
+        /* Calculate temperature dependent eaj */
+        eaj = 34.44;   // global mean;
+        
+        /*  Calculate delta sj */
+        delsj = 652.36 - 0.73 * p->thome - 0.46 * (p->thome - p->tgrow);
+        
+        /* update Jmax and Vcmax */
+        *vcmax = arrhenius(vcmax25, eav, tleaf, tref);
+        *jmax = peaked_arrhenius(jmax25, eaj, tleaf, tref, delsj, p->edj);
+        
     }
 
     /* reduce photosynthetic capacity with moisture stress */
     *jmax *= s->wtfac_root;
     *vcmax *= s->wtfac_root;
+    
     /*  Function allowing Jmax/Vcmax to be forced linearly to zero at low T */
-    adj_for_low_temp(*(&jmax), Tk);
-    adj_for_low_temp(*(&vcmax), Tk);
+    //adj_for_low_temp(*(&jmax), Tk);
+    //adj_for_low_temp(*(&vcmax), Tk);
 
     return;
 
