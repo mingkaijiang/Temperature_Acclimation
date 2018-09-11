@@ -189,14 +189,6 @@ def main(experiment_id, site, SPIN_UP=True, POST_INDUST=True, ELE_INITIALIZATION
                         "z0h_z0m": "1.0",
 
                         "g1": "3.8667",          # 3.8667 Fit by Me to Teresa's data 7th Nov 2013; or 2.78 from stomatal model
-                        #"jmaxna": "14.891",      # 
-                        #"jmaxpa": "291.4305",    # 
-                        #"jmaxnb": "99.497",      # 
-                        #"jmaxpb": "99.949",      # 88.56  
-                        #"vcmaxna": "10.453",     # 6.426
-                        #"vcmaxpa": "153.1748",    
-                        #"vcmaxnb": "74.522",     # 60.526
-                        #"vcmaxpb": "57.242",     # 27.66
                         "jmaxna": "49.930",      # forcing intercept to zero; if use all species df, 49.743
                         "jmaxpa": "933.90",      # forcing intercept to zero; if use all species df, 842.46 
                         "jmaxnb": "0.0",         # forcing intercept to zero
@@ -261,7 +253,7 @@ def main(experiment_id, site, SPIN_UP=True, POST_INDUST=True, ELE_INITIALIZATION
 
                         # control
                         "adjust_rtslow": "false",  # priming, off
-                        "alloc_model": "allometric",
+                        "alloc_model": "fixed",
                         "assim_model": "mate",
                         "calc_sw_params": "true",   #false=use fwp values, true=derive them
                         "deciduous_model": "false",
@@ -269,14 +261,14 @@ def main(experiment_id, site, SPIN_UP=True, POST_INDUST=True, ELE_INITIALIZATION
                         "exudation": "false",
                         "fixed_stem_nc": "true",
                         "fixed_stem_pc": "true",
-                        "fixleafnc": "false",
-                        "fixleafpc": "false",
+                        "fixleafnc": "true",
+                        "fixleafpc": "true",
                         "grazing": "false",
                         "gs_model": "medlyn",
                         "aci_relationship": "ellsworth",
                         "model_optroot": "false",
                         "modeljm": "1",
-                        "ncycle": "true",
+                        "ncycle": "false",
                         "pcycle": "false",
                         "nuptake_model": "1",
                         "puptake_model": "1",
