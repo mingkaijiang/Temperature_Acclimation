@@ -924,8 +924,11 @@ void calculate_jmax_and_vcmax(control *c, params *p, state *s, met *m, double Tk
         /* Calculate jvr - Jmax at 25 degree C / Vcmax at 25 degree C */
         jvr = 2.195 - 0.0237 * p->thome - 0.0219 * (p->thome - m->tgrow);
         
+        /* vcmax25 */
+        vcmax25 = p->vcmax;
+        
         /* Calculate Jmax */
-        jmax25 = p->vcmax * jvr;
+        jmax25 = vcmax25 * jvr;
         
         /* Calculate temperature dependent eav */
         eav = 42.6 + 1.14 * m->tgrow;
@@ -937,9 +940,15 @@ void calculate_jmax_and_vcmax(control *c, params *p, state *s, met *m, double Tk
         delsj = 652.36 - 0.73 * p->thome - 0.46 * (p->thome - m->tgrow);
         
         /* update Jmax and Vcmax */
-        *vcmax = arrhenius(vcmax25, eav, Tk, 25.0);
-        *jmax = peaked_arrhenius(jmax25, eaj, Tk, 25.0, delsj, p->edj);
+        *jmax = peaked_arrh(mt, jmax25, eaj, Tk,
+                            delsj, p->edj);
+        *vcmax = arrh(mt, vcmax25, eav, Tk);
         
+
+        //fprintf(stderr, "jmax25 %f, vcmax25 %f, vcmax %f, jmax %f, tgrow %f, eav %f, delsj %f\n",
+        //        jmax25, p->vcmax, *vcmax, *jmax, m->tgrow, eav, delsj);
+        
+
     }
 
     /* reduce photosynthetic capacity with moisture stress */

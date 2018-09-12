@@ -271,7 +271,7 @@ def main(experiment_id, site, SPIN_UP=True, POST_INDUST=True, ELE_INITIALIZATION
                         "gs_model": "medlyn",
                         "aci_relationship": "ellsworth",
                         "model_optroot": "false",
-                        "modeljm": "0",
+                        "modeljm": "4",
                         "ncycle": "false",
                         "pcycle": "false",
                         "nuptake_model": "0",
