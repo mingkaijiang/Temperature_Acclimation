@@ -257,7 +257,7 @@ def main(experiment_id, site, SPIN_UP=True, POST_INDUST=True, ELE_INITIALIZATION
 
                         # control
                         "adjust_rtslow": "false",  # priming, off
-                        "alloc_model": "fixed",
+                        "alloc_model": "allometric",
                         "assim_model": "mate",
                         "calc_sw_params": "true",   #false=use fwp values, true=derive them
                         "deciduous_model": "false",
