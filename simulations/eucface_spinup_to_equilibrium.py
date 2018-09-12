@@ -269,7 +269,7 @@ def main(experiment_id, site, SPIN_UP=True, POST_INDUST=True):
                         "gs_model": "medlyn",
                         "aci_relationship": "ellsworth",
                         "model_optroot": "false",
-                        "modeljm": "1",
+                        "modeljm": "0",
                         "ncycle": "false",
                         "pcycle": "false",
                         "nuptake_model": "1",
