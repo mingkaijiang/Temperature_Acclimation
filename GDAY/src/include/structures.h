@@ -434,6 +434,7 @@ typedef struct {
     double theta_fc_topsoil;
     double theta_wp_root;
     double theta_wp_topsoil;
+    double thome;                           /* Home temperature in degree C */
     double topsoil_depth;                   /* Topsoil depth (mm) */
     char   topsoil_type[STRING_LENGTH];
     double vcmax;                           /* maximum rate of carboxylation (umol m-2 s-1)  */
@@ -509,6 +510,7 @@ typedef struct {
     double *wind_pm;
     double *par_am;
     double *par_pm;
+    double *tgrow;
 
     /* sub-daily timestep */
     double *vpd;
@@ -546,6 +548,7 @@ typedef struct {
     double wind_pm;
     double Tk_am;
     double Tk_pm;
+    double tgrow;
 
 } met;
 

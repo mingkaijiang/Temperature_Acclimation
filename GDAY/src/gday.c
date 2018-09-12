@@ -159,6 +159,8 @@ int main(int argc, char **argv)
     free(ma->wind);
     free(ma->press);
     free(ma->par);
+    free(ma->tgrow);
+    
     if (c->sub_daily) {
         free(ma->vpd);
         free(ma->doy);
@@ -1050,6 +1052,7 @@ void unpack_met_data(control *c, fluxes *f, met_arrays *ma, met *m, params *p, i
         m->tair_am = ma->tam[c->day_idx];
         m->tair_pm = ma->tpm[c->day_idx];
         m->par = ma->par_am[c->day_idx] + ma->par_pm[c->day_idx];
+        m->tgrow = ma->tgrow[c->day_idx];
 
         /* Conversion factor for PAR to SW rad */
         c1 = MJ_TO_J * J_2_UMOL / (day_length * 60.0 * 60.0) * PAR_2_SW;

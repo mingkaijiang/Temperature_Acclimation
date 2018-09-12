@@ -1092,6 +1092,8 @@ int handler(char *section, char *name, char *value, control *c,
         p->theta_wp_root = atof(value);
     } else if (MATCH("params", "theta_wp_topsoil")) {
         p->theta_wp_topsoil = atof(value);
+    } else if (MATCH("params", "thome")) {
+        p->thome = atof(value);
     } else if (MATCH("params", "topsoil_depth")) {
         p->topsoil_depth = atof(value);
     } else if (MATCH("params", "topsoil_type")) {

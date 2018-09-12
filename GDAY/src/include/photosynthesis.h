@@ -29,7 +29,7 @@ double  calculate_co2_compensation_point(params *, double, double);
 double  arrh(double, double, double, double);
 double  peaked_arrh(double, double, double, double, double, double);
 double  calculate_michaelis_menten_parameter(params *, double, double);
-void    calculate_jmax_and_vcmax(control *, params *, state *, double, double,
+void    calculate_jmax_and_vcmax(control *, params *, state *, met *, double, double,
                                  double *, double *, double);
 void    calculate_jmax_and_vcmax_with_p(control *, params *, state *, double,
                                         double, double, double *, double *,

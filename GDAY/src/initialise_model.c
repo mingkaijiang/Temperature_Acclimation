@@ -291,6 +291,7 @@ void initialise_params(params *p) {
     p->theta_sp_topsoil = -999.9;
     p->theta_wp_root = -999.9;
     p->theta_wp_topsoil = -999.9;
+    p->thome = -999.9;
     p->topsoil_depth = 350.0;
     strcpy(p->topsoil_type, "clay_loam");
     p->vcmax = -999.9;

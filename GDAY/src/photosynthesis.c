@@ -575,9 +575,9 @@ void mate_C3_photosynthesis(control *c, fluxes *f, met *m, params *p, state *s,
         calculate_jmax_and_vcmax_with_p(c, p, s, m->Tk_pm, N0, P0, &jmax_pm,
                                         &vcmax_pm, mt);
     } else {
-        calculate_jmax_and_vcmax(c, p, s, m->Tk_am, N0, &jmax_am,
+        calculate_jmax_and_vcmax(c, p, s, m, m->Tk_am, N0, &jmax_am,
                                  &vcmax_am, mt);
-        calculate_jmax_and_vcmax(c, p, s, m->Tk_pm, N0, &jmax_pm,
+        calculate_jmax_and_vcmax(c, p, s, m, m->Tk_pm, N0, &jmax_pm,
                                  &vcmax_pm, mt);
     }
 
@@ -832,7 +832,7 @@ double calculate_michaelis_menten_parameter(params *p, double Tk, double mt) {
 
 }
 
-void calculate_jmax_and_vcmax(control *c, params *p, state *s, double Tk,
+void calculate_jmax_and_vcmax(control *c, params *p, state *s, met *m, double Tk,
                               double N0, double *jmax, double *vcmax,
                               double mt) {
     /*
@@ -922,23 +922,23 @@ void calculate_jmax_and_vcmax(control *c, params *p, state *s, double Tk,
         */
         
         /* Calculate jvr - Jmax at 25 degree C / Vcmax at 25 degree C */
-        jvr = 2.195 - 0.0237 * p->thome - 0.0219 * (p->thome - p->tgrow);
+        jvr = 2.195 - 0.0237 * p->thome - 0.0219 * (p->thome - m->tgrow);
         
         /* Calculate Jmax */
-        jmax25 = p->vcmax25 * jvr;
+        jmax25 = p->vcmax * jvr;
         
         /* Calculate temperature dependent eav */
-        eav = 42.6 + 1.14 * p->tgrow;
+        eav = 42.6 + 1.14 * m->tgrow;
         
         /* Calculate temperature dependent eaj */
         eaj = 34.44;   // global mean;
         
         /*  Calculate delta sj */
-        delsj = 652.36 - 0.73 * p->thome - 0.46 * (p->thome - p->tgrow);
+        delsj = 652.36 - 0.73 * p->thome - 0.46 * (p->thome - m->tgrow);
         
         /* update Jmax and Vcmax */
-        *vcmax = arrhenius(vcmax25, eav, tleaf, tref);
-        *jmax = peaked_arrhenius(jmax25, eaj, tleaf, tref, delsj, p->edj);
+        *vcmax = arrhenius(vcmax25, eav, Tk, 25.0);
+        *jmax = peaked_arrhenius(jmax25, eaj, Tk, 25.0, delsj, p->edj);
         
     }
 

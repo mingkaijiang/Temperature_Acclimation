@@ -189,8 +189,10 @@ def main(experiment_id, site, SPIN_UP=True, POST_INDUST=True, ELE_INITIALIZATION
                         "z0h_z0m": "1.0",
 
                         "g1": "3.8667",          # 3.8667 Fit by Me to Teresa's data 7th Nov 2013; or 2.78 from stomatal model
-                        "jmax": "40",
-                        "vcmax": "80",
+                        "jmax": "169.09",        # EucFACE
+                        "vcmax": "99.89",        # EucFACE
+                        "thome": "28.9",         # Home temperature for EucFACE
+
                         "jmaxna": "49.930",      # forcing intercept to zero; if use all species df, 49.743
                         "jmaxpa": "933.90",      # forcing intercept to zero; if use all species df, 842.46 
                         "jmaxnb": "0.0",         # forcing intercept to zero
