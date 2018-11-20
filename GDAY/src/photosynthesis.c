@@ -75,6 +75,7 @@ void photosynthesis_C3(control *c, canopy_wk *cw, met *m, params *p, state *s) {
             dleaf_kpa = 0.05;
         }
 
+        
         // This is calculated by SPA hydraulics so we don't need to account for
         // water stress on gs.
         if (c->water_balance == HYDRAULICS) {
